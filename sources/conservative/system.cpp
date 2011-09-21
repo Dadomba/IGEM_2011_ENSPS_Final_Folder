@@ -1,6 +1,5 @@
 #include "system.h"
 #include "reaction.h"
-#include "inh.h"
 #include "bio_cst.h"
 
 #include <string>
@@ -13,21 +12,18 @@
 #define TB_SIGNAL_DECLARATION "%%TB_SIGNAL_DECLARATION%%"
 #define TB_PORT_MAP "%%TB_PORT_MAP%%"
 #define TB_MAPPING "%%TB_MAPPING%%"
-#define TB_SIGNAL_GENERATION "%%TB_SIGNAL_GENERATION%%"
 
 
 
 using namespace std;
 
-System::System(p_Reaction* _reaction_array, int _size_array,string testbench_entity_name, string testbench_architecture_name, string file_name, QStringList var_species, double sim_time)
+System::System(p_Reaction* _reaction_array, int _size_array,string testbench_entity_name, string testbench_architecture_name, string file_name)
 {
     tb_entity_name = testbench_entity_name;
     tb_architecture_name = testbench_architecture_name;
     reaction_array = _reaction_array;
     size_array = _size_array;
     tb_file_name = file_name;
-    species_to_vary = var_species;
-    time = sim_time;
 
     species_list_generation();
     signal_declaration();
@@ -56,7 +52,6 @@ bool System::test_bench_generation()
     string tb_architecture_code = TB_ARCHITECTURE_NAME ;
     string tb_signal_declaration_code = TB_SIGNAL_DECLARATION;
     string tb_portmap = TB_PORT_MAP;
-    string tb_signal_generation = TB_SIGNAL_GENERATION;
 
     string pattern_path = "pattern_files\\" + tb_pattern_file_name;
     ifstream r_file(pattern_path.c_str(), ios::in);
@@ -66,6 +61,7 @@ bool System::test_bench_generation()
     ofstream w_file(path.c_str(), ios::out | ios::trunc);
 
     bool res = w_file;
+
 
     if (r_file && w_file)
     {
@@ -109,14 +105,6 @@ bool System::test_bench_generation()
                 line.insert(found,generate_port_map());
             }
 
-//Replacement of Signal Variations
-            found = line.find(tb_signal_generation);
-            if (found!=string::npos)
-            {
-                line.erase(found,tb_signal_generation.size());
-                line.insert(found,signal_variation());
-            }
-
             w_file << line << endl;
         }
 
@@ -135,8 +123,6 @@ string System::generate_port_map()
 {
 
 
-    p_Reaction* inh_array;
-    int inh_indice = 0;
     p_Reaction* cplx_array;
     int cplx_indice = 0;
     p_Reaction* synth_array;
@@ -149,20 +135,6 @@ string System::generate_port_map()
     {
         r_type = reaction_array[i]->get_reaction_type();
         r_name = reaction_array[i]->get_reaction_name();
-
-        if (r_type == 0) // Inhibition
-        {
-            p_Reaction* new_tab;
-            new_tab = new p_Reaction[inh_indice+1];
-
-            for(int m=0; m<inh_indice; m++)
-            {
-                new_tab[m]=inh_array[m];
-            }
-            new_tab[inh_indice] = reaction_array[i];
-            inh_array = new_tab;
-            inh_indice++;
-        }
 
         if ( r_type == 1) // Complexation
         {
@@ -226,69 +198,6 @@ string System::generate_port_map()
     string output_signal;
     int n = 0;
 
-    for(int i=0;i<inh_indice;i++){
-        entities_mapping[n]=mapping_string;
-        size_t found = string::npos;
-        do{
-            found = entities_mapping[n].find(tb_reaction_name_code);
-            if(found!=string::npos)
-            {
-                entities_mapping[n].erase(found,tb_reaction_name_code.size());
-                entities_mapping[n].insert(found,inh_array[i]->get_reaction_name());
-            }
-        }while(found!=string::npos);
-
-        found = string::npos;
-        found = entities_mapping[n].find(tb_entity_name_code);
-        if(found!=string::npos)
-        {
-            entities_mapping[n].erase(found,tb_entity_name_code.size());
-            entities_mapping[n].insert(found,("E_" + inh_array[i]->get_entity_name_user()));
-        }
-
-        found = string::npos;
-        found = entities_mapping[n].find(tb_reaction_mapping);
-        if(found!=string::npos)
-        {
-            entities_mapping[n].erase(found,tb_reaction_mapping.size());
-
-            string tmp="\n";
-            const Species* species_in_reaction = inh_array[i]->get_input_species();
-            for(int j=0;j<inh_array[i]->get_nb_input_species();j++){
-                tmp += "\t\t\t\t" + species_in_reaction[j].Get_name() + " => ";
-
-                for(int x=0;x<species_list_size;x++){
-                    if(species_in_reaction[j].Get_name() == species_list[x].name_sp){
-                        tmp += species_list[x].signal;
-                        tmp += ",";
-                        break;
-                    }
-                }
-                tmp += "\n";
-            }
-            tmp += "\t\t\t\tS => ";
-            for(int x=0;x<species_list_size;x++){
-                    if(inh_array[i]->get_output_species().Get_name() == species_list[x].name_sp){
-                        tmp += species_list[x].signal;
-                        output_signal = species_list[x].signal;
-                        break;
-                    }
-            }
-            entities_mapping[n].insert(found,tmp);
-        }
-        Inh* stat = static_cast<Inh*>(inh_array[i]);
-
-        for(int x=0;x<species_list_size;x++){
-                    if(stat->get_main_species().Get_name() == species_list[x].name_sp){
-                        species_list[x].signal = output_signal;
-                        break;
-                    }
-        }
-
-
-        n++;
-    }
-
     for(int i=0;i<cplx_indice;i++){
         entities_mapping[n]=mapping_string;
         size_t found = string::npos;
@@ -306,7 +215,7 @@ string System::generate_port_map()
         if(found!=string::npos)
         {
             entities_mapping[n].erase(found,tb_entity_name_code.size());
-            entities_mapping[n].insert(found,("E_" + cplx_array[i]->get_entity_name_user()));
+            entities_mapping[n].insert(found,cplx_array[i]->get_entity_name_user());
         }
 
         found = string::npos;
@@ -359,7 +268,7 @@ string System::generate_port_map()
         if(found!=string::npos)
         {
             entities_mapping[n].erase(found,tb_entity_name_code.size());
-            entities_mapping[n].insert(found,("E_" + synth_array[i]->get_entity_name_user()));
+            entities_mapping[n].insert(found,synth_array[i]->get_entity_name_user());
         }
 
         found = string::npos;
@@ -555,36 +464,4 @@ void System::species_list_generation(){
         }
     }
 
-}
-
-QList<list_sig> System::get_species_in_system(){
-
-    QList<list_sig> list;
-
-    for(int i=0;i<species_list_size;i++){
-        list<<species_list[i];
-    }
-    return list;
-
-}
-
-string System::signal_variation(){
-    QStringList str;
-    for(int i=0; i<species_to_vary.size();i++){
-        str << "\ts_" + species_to_vary.at(i) + " <= '0',";
-        int j = 1;
-        while( (j*(time/pow(2,i+1))) <time){
-            QString tmp = "\t'" + QString::number(j%2) + "' after " + QString::number(j*(time/pow(2,i+1))) + " sec";
-            if(j < (pow(2,i+1)-1)){
-                tmp += ",";
-            }
-            else{
-                tmp += ";";
-            }
-            str << tmp;
-            j++;
-        }
-    }
-
-    return str.join("\n").toStdString();
 }

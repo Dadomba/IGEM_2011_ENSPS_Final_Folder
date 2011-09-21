@@ -48,17 +48,17 @@ Manager::Manager(MainWindow *target_ui){
 //        syst_1.test_bench_generation();
 
 
-    connect(this->ui,SIGNAL(addSpeciesRequestFromUi(string,bool)),this,SLOT(speciesAddRequest(string,bool)));
-    connect(this,SIGNAL(speciesAddingSuccess(bool,string,bool)),this->ui,SLOT(speciesAddingResult(bool,string,bool)));
+    connect(this->ui,SIGNAL(addSpeciesRequestFromUi(string,float)),this,SLOT(speciesAddRequest(string,float)));
+    connect(this,SIGNAL(speciesAddingSuccess(bool,string,float)),this->ui,SLOT(speciesAddingResult(bool,string,float)));
     connect(this->ui,SIGNAL(removeSpeciesRequestFromUi(string)),this,SLOT(speciesRemoveRequest(string)));
     connect(this,SIGNAL(speciesRemovingSuccess(bool,string)),this->ui,SLOT(speciesRemovingResult(bool,string)));
-    connect(this->ui,SIGNAL(modifySpeciesRequestFromUi(string,bool)),this,SLOT(speciesModifyRequest(string,bool)));
-    connect(this,SIGNAL(speciesModifiingSuccess(bool,string,bool)),this->ui,SLOT(speciesModifiingResult(bool,string,bool)));
+    connect(this->ui,SIGNAL(modifySpeciesRequestFromUi(string,float)),this,SLOT(speciesModifyRequest(string,float)));
+    connect(this,SIGNAL(speciesModifiingSuccess(bool,string,float)),this->ui,SLOT(speciesModifiingResult(bool,string,float)));
     connect(this->ui,SIGNAL(addReactionRequestFromUi(QString,int,QStringList,QString,QStringList)),this,SLOT(reactionAddRequest(QString,int,QStringList,QString,QStringList)));
     connect(this,SIGNAL(reactionAddingSuccess(bool,QString,int,QStringList,QString,QStringList)),this->ui,SLOT(reactionAddingResult(bool,QString,int,QStringList,QString,QStringList)));
     connect(this->ui,SIGNAL(removeReactionRequestFromUi(string)),this,SLOT(reactionRemoveRequest(string)));
     connect(this,SIGNAL(reactionRemovingSuccess(bool,string)),this->ui,SLOT(reactionRemovingResult(bool,string)));
-    connect(this->ui,SIGNAL(createSystemRequestFromUi(QString,QStringList,QStringList,QList<double>)),this,SLOT(systemCreationRequest(QString,QStringList,QStringList,QList<double>)));
+    connect(this->ui,SIGNAL(createSystemRequestFromUi(QString,QStringList)),this,SLOT(systemCreationRequest(QString,QStringList)));
     connect(this,SIGNAL(systemCreationSuccess(bool,QString)),this->ui,SLOT(systemCreationResult(bool,QString)));
 }
 
@@ -88,7 +88,7 @@ p_Reaction* Manager::newTabAllocation_react(int size){
 //                Species Part                 //
 //*********************************************//
 
-bool Manager::addSpeciesToList(string name, bool initial_value){
+bool Manager::addSpeciesToList(string name, float initial_value){
 
     if(this->isSpeciesInList(name)){
         std::cerr<<"Species already exists in the list"<<std::endl;
@@ -131,7 +131,7 @@ bool Manager::removeSpeciesFromList(string name){
     }
 }
 
-bool Manager::modifySpeciesToList(string name, bool initial_value){
+bool Manager::modifySpeciesToList(string name, float initial_value){
     if(this->isSpeciesInList(name)){
         for(int i=0;i<species_list_size;i++){
             if(this->species_list[i].Get_name() == name){
@@ -156,7 +156,7 @@ bool Manager::isSpeciesInList(string name){
     return false;
 }
 
-void Manager::speciesAddRequest(string name, bool initial_value){
+void Manager::speciesAddRequest(string name, float initial_value){
     bool res = this->addSpeciesToList(name,initial_value);
     emit speciesAddingSuccess(res,name,initial_value);
 }
@@ -166,7 +166,7 @@ void Manager::speciesRemoveRequest(string name){
     emit speciesRemovingSuccess(res,name);
 }
 
-void Manager::speciesModifyRequest(string name, bool initial_value){
+void Manager::speciesModifyRequest(string name, float initial_value){
     bool res = this->modifySpeciesToList(name,initial_value);
     emit speciesModifiingSuccess(res,name,initial_value);
 }
@@ -230,22 +230,6 @@ bool Manager::isReactionInList(string name){
 void Manager::reactionAddRequest(QString name, int type, QStringList speciesin, QString speciesout, QStringList speciesoptional){
 
     switch(type){
-        case CST_INHIBITION:{
-            Species inhibited;
-            Species inhibitor;
-            for(int i=0;i<species_list_size;i++){
-                if(species_list[i].Get_name() == speciesin.at(0).toStdString()){
-                    inhibited = species_list[i];
-                }
-                if(species_list[i].Get_name() == speciesin.at(1).toStdString()){
-                    inhibitor = species_list[i];
-                }
-            }
-            Inh *tmp = new Inh(name.toStdString(),name.toStdString(),name.toStdString(),inhibited,inhibitor);
-            bool res = addReactionToList(tmp);
-            emit reactionAddingSuccess(res, name, CST_INHIBITION, speciesin, speciesout);
-            break;
-        }
         case CST_COMPLEXATION:{
                 Species *tab = NULL;
                 Species out;
@@ -270,7 +254,7 @@ void Manager::reactionAddRequest(QString name, int type, QStringList speciesin, 
                         break;
                     }
                 }
-                Complex *tmp = new Complex(name.toStdString(),name.toStdString(),name.toStdString(),tab, speciesin.size(),out);
+                Complex *tmp = new Complex("E_" + name.toStdString(),name.toStdString(),name.toStdString(),tab, speciesin.size(),out);
                 bool res = addReactionToList(tmp);
                 emit reactionAddingSuccess(res, name, CST_COMPLEXATION, speciesin, speciesout);
             break;
@@ -315,7 +299,7 @@ void Manager::reactionAddRequest(QString name, int type, QStringList speciesin, 
                         break;
                     }
                 }
-                Synth *tmp = new Synth(name.toStdString(),name.toStdString(),name.toStdString(), tab_act, tab_rep, tab_act_size, tab_rep_size, out);
+                Synth *tmp = new Synth("E_" + name.toStdString(),name.toStdString(),name.toStdString(), tab_act, tab_rep, tab_act_size, tab_rep_size, out);
                 bool res = addReactionToList(tmp);
                 emit reactionAddingSuccess(res, name, CST_SYNTHESIS, speciesin, speciesout, speciesoptional);
             break;
@@ -332,47 +316,26 @@ void Manager::reactionRemoveRequest(string name){
 //                System Part                  //
 //*********************************************//
 
-void Manager::systemCreationRequest(QString name, QStringList reactions, QStringList var_species, QList<double> timing){
+void Manager::systemCreationRequest(QString name, QStringList reactions){
 
     p_Reaction reaction_in_system_tab[reactions.size()];
     int reaction_in_system_tab_size=reactions.size();
     for(int i=0; i<reactions.size();i++){
         for(int j=0;j<reaction_list_size;j++){
-            if(reaction_list[j]->get_reaction_name() == reactions.at(i).toStdString()){
+            if(reaction_list[j]->get_reaction_name() == ("E_"+reactions.at(i)).toStdString()){
                 reaction_in_system_tab[i] = reaction_list[j];
             }
         }
     }
 
     for(int i=0;i<reaction_in_system_tab_size;i++){
-        reaction_in_system_tab[i]->file_creation();
+        reaction_in_system_tab[i]->filereact_creation();
+        reaction_in_system_tab[i]->fileresandcap_creation();
+        reaction_in_system_tab[i]->filepkg_creation();
     }
 
-    patCreation(name,reaction_in_system_tab,reaction_in_system_tab_size,timing);
-
-    System new_system(reaction_in_system_tab,reaction_in_system_tab_size,name.toStdString(),"E_"+name.toStdString(),name.toStdString(),var_species, timing.at(1));
+    System new_system(reaction_in_system_tab,reaction_in_system_tab_size,"E_"+name.toStdString(),name.toStdString(),name.toStdString());
     bool res = new_system.test_bench_generation();
     emit systemCreationSuccess(res,name);
-
-}
-
-bool Manager::patCreation(QString name, p_Reaction *reaction_in_system_tab, int reaction_in_system_tab_size, QList<double> timing){
-
-    std::ofstream w_file(("generated_files\\"+name+".pat").toStdString().c_str(), ios::out | ios::trunc);
-    bool res = w_file;
-
-    w_file<<".VHDL SET KIND=AMS"<<std::endl<<std::endl;
-
-    for(int i=0;i<reaction_in_system_tab_size;i++){
-        w_file<<".VHDL COMPILE LIBRARY=WORK SOURCE=" + reaction_in_system_tab[i]->get_file_name_user() + ".vhd"<<std::endl;
-    }
-
-    w_file<<".VHDL COMPILE LIBRARY=WORK SOURCE=" + name.toStdString() + ".vhd"<<std::endl;
-
-    w_file<<std::endl<<".VHDL elaborate WORK.E_"+name.toStdString()<<std::endl;
-
-    w_file<<".Tran " + QString::number(timing.at(0)).toStdString() + "s " + QString::number(timing.at(1)).toStdString() + "s"<<std::endl;
-
-    return res;
 
 }
