@@ -125,7 +125,7 @@ bool System::test_bench_generation()
     }
     else
     {
-        cerr << "Impossible d'ouvrir le fichier !" << endl;
+        cerr << "Impossible d'ouvrir le fichier !" << path << endl;
     }
 
     return res;
@@ -213,7 +213,7 @@ string System::generate_port_map()
     }
     else
     {
-        cerr << "Impossible d'ouvrir le fichier !" << endl;
+        cerr << "Impossible d'ouvrir le fichier !" << pattern_path << endl;
     }
 
 

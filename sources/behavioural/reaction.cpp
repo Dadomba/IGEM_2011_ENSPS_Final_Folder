@@ -129,7 +129,7 @@ bool Reaction::file_creation()
     }
     else
     {
-        cerr << "Impossible d'ouvrir le fichier !" << endl;
+        cerr << "Impossible d'ouvrir le fichier !" << path << endl;
     }
 
     return res;

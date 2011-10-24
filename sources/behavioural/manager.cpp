@@ -258,7 +258,7 @@ void Manager::reactionAddRequest(QString name, int type, QStringList speciesin, 
                                 new_tab[n].Set_name(tab[n].Get_name());
                                 new_tab[n].Set_initial_state(tab[n].Get_initial_state());
                             }
-                            new_tab[tab_size] = species_list[i];
+                            new_tab[tab_size] = species_list[j];
                             tab = new_tab;
                             tab_size++;
                         }
@@ -286,7 +286,7 @@ void Manager::reactionAddRequest(QString name, int type, QStringList speciesin, 
                                 new_tab[n].Set_name(tab_act[n].Get_name());
                                 new_tab[n].Set_initial_state(tab_act[n].Get_initial_state());
                             }
-                            new_tab[tab_act_size] = species_list[i];
+                            new_tab[tab_act_size] = species_list[j];
                             tab_act = new_tab;
                             tab_act_size++;
                         }
